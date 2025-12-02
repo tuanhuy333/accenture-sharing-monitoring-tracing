@@ -1,0 +1,83 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: user-service-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: user-service
+          service: user-service
+          __path__: /var/log/app/user-service.log
+
+  - job_name: order-service-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: order-service
+          service: order-service
+          __path__: /var/log/app/order-service.log
+
+  - job_name: payment-service-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: payment-service
+          service: payment-service
+          __path__: /var/log/app/payment-service.log
+
+  - job_name: inventory-service-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: inventory-service
+          service: inventory-service
+          __path__: /var/log/app/inventory-service.log
+
+  - job_name: shipping-service-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: shipping-service
+          service: shipping-service
+          __path__: /var/log/app/shipping-service.log
+
+  - job_name: notification-service-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: notification-service
+          service: notification-service
+          __path__: /var/log/app/notification-service.log
+
+  - job_name: review-service-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: review-service
+          service: review-service
+          __path__: /var/log/app/review-service.log
+
+  - job_name: auth-service-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: auth-service
+          service: auth-service
+          __path__: /var/log/app/auth-service.log
+

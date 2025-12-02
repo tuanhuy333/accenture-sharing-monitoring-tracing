@@ -1,0 +1,316 @@
+version: '3.8'
+
+services:
+  # Tempo - Distributed Tracing Backend
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./config/tempo.yaml:/etc/tempo/tempo.yaml
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200"   # Tempo
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+
+  # Loki - Log Aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./config/loki-config.yaml:/etc/loki/loki-config.yaml
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - monitoring
+
+  # Promtail - Log Shipper
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    volumes:
+      - ./config/promtail-config.yaml:/etc/promtail/promtail-config.yaml
+      - ./logs:/var/log/app:ro
+    networks:
+      - monitoring
+    depends_on:
+      - loki
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-remote-write-receiver'
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+
+  # Alert Manager
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    volumes:
+      - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager-data:/alertmanager
+    ports:
+      - "9093:9093"
+    networks:
+      - monitoring
+
+  # Grafana - Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_FEATURE_TOGGLES_ENABLE=traceqlEditor
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
+    ports:
+      - "3000:3000"
+    depends_on:
+      - tempo
+      - loki
+      - prometheus
+    networks:
+      - monitoring
+
+  # User Service
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.user-service
+    container_name: user-service
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      - OTEL_SERVICE_NAME=user-service
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=user-service,service.version=1.0.0
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - PORT=8000
+      - ORDER_SERVICE_URL=http://order-service:8001
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"
+    depends_on:
+      - tempo
+      - loki
+      - order-service
+    networks:
+      - monitoring
+
+  # Order Service
+  order-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.order-service
+    container_name: order-service
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      - OTEL_SERVICE_NAME=order-service
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=order-service,service.version=1.0.0
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - PORT=8001
+      - PAYMENT_SERVICE_URL=http://payment-service:8002
+      - INVENTORY_SERVICE_URL=http://inventory-service:8003
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "8001:8001"
+    depends_on:
+      - tempo
+      - loki
+      - payment-service
+    networks:
+      - monitoring
+
+  # Payment Service
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.payment-service
+    container_name: payment-service
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      - OTEL_SERVICE_NAME=payment-service
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=payment-service,service.version=1.0.0
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - PORT=8002
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "8002:8002"
+    depends_on:
+      - tempo
+      - loki
+    networks:
+      - monitoring
+
+  # Inventory Service
+  inventory-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.inventory-service
+    container_name: inventory-service
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      - OTEL_SERVICE_NAME=inventory-service
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=inventory-service,service.version=1.0.0
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - PORT=8003
+      - SHIPPING_SERVICE_URL=http://shipping-service:8004
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "8003:8003"
+    depends_on:
+      - tempo
+      - loki
+      - shipping-service
+    networks:
+      - monitoring
+
+  # Shipping Service
+  shipping-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.shipping-service
+    container_name: shipping-service
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      - OTEL_SERVICE_NAME=shipping-service
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=shipping-service,service.version=1.0.0
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - PORT=8004
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8005
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "8004:8004"
+    depends_on:
+      - tempo
+      - loki
+      - notification-service
+    networks:
+      - monitoring
+
+  # Notification Service
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.notification-service
+    container_name: notification-service
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      - OTEL_SERVICE_NAME=notification-service
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=notification-service,service.version=1.0.0
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - PORT=8005
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "8005:8005"
+    depends_on:
+      - tempo
+      - loki
+    networks:
+      - monitoring
+
+  # Review Service
+  review-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.review-service
+    container_name: review-service
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      - OTEL_SERVICE_NAME=review-service
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=review-service,service.version=1.0.0
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - PORT=8006
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8005
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "8006:8006"
+    depends_on:
+      - tempo
+      - loki
+      - notification-service
+    networks:
+      - monitoring
+
+  # Auth Service
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.auth-service
+    container_name: auth-service
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      - OTEL_SERVICE_NAME=auth-service
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=auth-service,service.version=1.0.0
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - PORT=8007
+      - USER_SERVICE_URL=http://user-service:8000
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "8007:8007"
+    depends_on:
+      - tempo
+      - loki
+      - user-service
+    networks:
+      - monitoring
+
+volumes:
+  tempo-data:
+  loki-data:
+  prometheus-data:
+  alertmanager-data:
+  grafana-data:
+
+networks:
+  monitoring:
+    driver: bridge

@@ -1,0 +1,94 @@
+groups:
+  - name: demo_alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected in {{ $labels.service }}"
+          description: "Error rate is {{ $value }} errors per second for service {{ $labels.service }}"
+
+      - alert: HighRequestLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency in {{ $labels.service }}"
+          description: "95th percentile latency is {{ $value }} seconds for service {{ $labels.service }}"
+
+      - alert: UserServiceDown
+        expr: up{job="user-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "User Service is down"
+          description: "User service is not responding"
+
+      - alert: OrderServiceDown
+        expr: up{job="order-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Order Service is down"
+          description: "Order service is not responding"
+
+      - alert: PaymentServiceDown
+        expr: up{job="payment-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Payment Service is down"
+          description: "Payment service is not responding"
+
+      - alert: InventoryServiceDown
+        expr: up{job="inventory-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Inventory Service is down"
+          description: "Inventory service is not responding"
+
+      - alert: ShippingServiceDown
+        expr: up{job="shipping-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Shipping Service is down"
+          description: "Shipping service is not responding"
+
+      - alert: NotificationServiceDown
+        expr: up{job="notification-service"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Notification Service is down"
+          description: "Notification service is not responding"
+
+      - alert: ReviewServiceDown
+        expr: up{job="review-service"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Review Service is down"
+          description: "Review service is not responding"
+
+      - alert: AuthServiceDown
+        expr: up{job="auth-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Auth Service is down"
+          description: "Auth service is not responding"
+

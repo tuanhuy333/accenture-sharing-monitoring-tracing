@@ -1,0 +1,83 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'demo-cluster'
+    replica: '0'
+
+rule_files:
+  - '/etc/prometheus/alerts.yml'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'user-service'
+    static_configs:
+      - targets: ['user-service:8000']
+    metrics_path: '/metrics'
+
+  - job_name: 'order-service'
+    static_configs:
+      - targets: ['order-service:8001']
+    metrics_path: '/metrics'
+
+  - job_name: 'payment-service'
+    static_configs:
+      - targets: ['payment-service:8002']
+    metrics_path: '/metrics'
+
+  - job_name: 'inventory-service'
+    static_configs:
+      - targets: ['inventory-service:8003']
+    metrics_path: '/metrics'
+
+  - job_name: 'shipping-service'
+    static_configs:
+      - targets: ['shipping-service:8004']
+    metrics_path: '/metrics'
+
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:8005']
+    metrics_path: '/metrics'
+
+  - job_name: 'review-service'
+    static_configs:
+      - targets: ['review-service:8006']
+    metrics_path: '/metrics'
+
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth-service:8007']
+    metrics_path: '/metrics'
+
+  - job_name: 'tempo'
+    static_configs:
+      - targets: ['tempo:3200']
+    metrics_path: '/metrics'
+
+  - job_name: 'tempo-generator'
+    static_configs:
+      - targets: ['tempo:3200']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'traces_(service_graph|spanmetrics).*'
+        action: keep
+
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
