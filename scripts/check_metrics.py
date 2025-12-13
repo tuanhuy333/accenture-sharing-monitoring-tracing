@@ -48,7 +48,7 @@ for query, description in queries:
 print("\n" + "="*80)
 print("💡 Nếu metrics vẫn = 0:")
 print("   1. Kiểm tra Prometheus targets: http://localhost:9090/targets")
-print("   2. Chạy lại: python quick_generate_traffic.py")
+print("   2. Chạy lại: python scripts/quick_generate_traffic.py")
 print("   3. Đợi thêm 30 giây để Prometheus scrape")
 print("="*80)
 

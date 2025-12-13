@@ -174,20 +174,50 @@ def process_payment():
     with tracer.start_as_current_span("process_payment") as span:
         span.set_attribute("service.name", "payment-service")
         
+        # Get trace ID from current span
+        current_span = trace.get_current_span()
+        trace_id = format(current_span.get_span_context().trace_id, '032x') if current_span else None
+        
         data = request.get_json() or {}
         order_id = data.get('order_id')
         amount = data.get('amount')
+        inject_error = data.get('inject_error', False)
         
         if not order_id or not amount:
             return jsonify({"error": "order_id and amount are required"}), 400
         
         span.set_attribute("order.id", order_id)
         span.set_attribute("payment.amount", amount)
+        if trace_id:
+            span.set_attribute("trace.id", trace_id)
         
-        # Simulate payment processing (sometimes slow, sometimes fails)
+        # Simulate payment processing
         processing_start = time.time()
         processing_time = random.uniform(0.5, 2.0)
         time.sleep(processing_time)
+        
+        # Inject error if requested
+        if inject_error:
+            logger.error(f"Payment failed for order {order_id} - Error injected! Trace ID: {trace_id}")
+            span.set_status(trace.Status(trace.StatusCode.ERROR, "Payment processing failed - Error injected"))
+            span.record_exception(Exception("Payment processing failed - Error injected"))
+            
+            payment = {
+                "id": random.randint(1000, 9999),
+                "order_id": order_id,
+                "amount": amount,
+                "status": "failed",
+                "method": data.get('method', 'credit_card'),
+                "processed_at": time.time(),
+                "trace_id": trace_id
+            }
+            
+            payment_processing_time.labels(
+                service='payment-service',
+                status='failed'
+            ).observe(processing_time)
+            
+            return jsonify({"error": "Payment processing failed", "payment": payment, "trace_id": trace_id}), 500
         
         # 10% chance of failure
         success = random.random() > 0.1
@@ -198,7 +228,8 @@ def process_payment():
             "amount": amount,
             "status": "completed" if success else "failed",
             "method": data.get('method', 'credit_card'),
-            "processed_at": time.time()
+            "processed_at": time.time(),
+            "trace_id": trace_id
         }
         
         payment_processing_time.labels(
@@ -207,13 +238,13 @@ def process_payment():
         ).observe(processing_time)
         
         if success:
-            logger.info(f"Payment processed successfully for order {order_id}")
+            logger.info(f"Payment processed successfully for order {order_id} - Trace ID: {trace_id}")
         else:
-            logger.error(f"Payment failed for order {order_id}")
+            logger.error(f"Payment failed for order {order_id} - Trace ID: {trace_id}")
             span.set_status(trace.Status(trace.StatusCode.ERROR, "Payment processing failed"))
-            return jsonify({"error": "Payment processing failed", "payment": payment}), 500
+            return jsonify({"error": "Payment processing failed", "payment": payment, "trace_id": trace_id}), 500
         
-        return jsonify({"payment": payment}), 201
+        return jsonify({"payment": payment, "trace_id": trace_id}), 201
 
 # Add Prometheus metrics endpoint
 app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {

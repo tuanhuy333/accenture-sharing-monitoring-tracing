@@ -180,18 +180,25 @@ def create_order():
     with tracer.start_as_current_span("create_order") as span:
         span.set_attribute("service.name", "order-service")
         
+        # Get trace ID
+        current_span = trace.get_current_span()
+        trace_id = format(current_span.get_span_context().trace_id, '032x') if current_span else None
+        
         data = request.get_json() or {}
         user_id = data.get('user_id')
+        inject_error = data.get('inject_error', False)
         
         if not user_id:
             return jsonify({"error": "user_id is required"}), 400
         
         span.set_attribute("user.id", user_id)
+        if trace_id:
+            span.set_attribute("trace.id", trace_id)
         
         # Call inventory service to check availability
         inventory_service_url = os.getenv('INVENTORY_SERVICE_URL', 'http://inventory-service:8003')
         try:
-            logger.info(f"Checking inventory for order")
+            logger.info(f"Checking inventory for order - Trace ID: {trace_id}")
             requests.get(f"{inventory_service_url}/inventory/1", timeout=5)
         except Exception as e:
             logger.warning(f"Failed to call inventory service: {e}")
@@ -203,12 +210,48 @@ def create_order():
             "id": random.randint(100, 999),
             "user_id": user_id,
             "total": data.get('total', round(random.uniform(50, 200), 2)),
-            "status": "pending"
+            "status": "pending",
+            "trace_id": trace_id
         }
         
-        logger.info(f"Created order {order['id']} for user {user_id}")
+        logger.info(f"Created order {order['id']} for user {user_id} - Trace ID: {trace_id}")
         
-        return jsonify({"order": order}), 201
+        # Call payment service to process payment
+        payment_service_url = os.getenv('PAYMENT_SERVICE_URL', 'http://payment-service:8002')
+        try:
+            logger.info(f"Processing payment for order {order['id']} - Trace ID: {trace_id}")
+            payment_response = requests.post(
+                f"{payment_service_url}/payments",
+                json={
+                    "order_id": order['id'],
+                    "amount": order['total'],
+                    "method": "credit_card",
+                    "inject_error": inject_error
+                },
+                timeout=10
+            )
+            
+            if payment_response.status_code == 201:
+                payment_data = payment_response.json()
+                order['payment'] = payment_data.get('payment', {})
+                order['payment_trace_id'] = payment_data.get('trace_id')
+                logger.info(f"Payment processed successfully - Trace ID: {payment_data.get('trace_id')}")
+            else:
+                payment_data = payment_response.json()
+                order['payment_error'] = payment_data.get('error', 'Payment failed')
+                order['payment_trace_id'] = payment_data.get('trace_id')
+                logger.error(f"Payment failed - Trace ID: {payment_data.get('trace_id')}")
+                span.set_status(trace.Status(trace.StatusCode.ERROR, f"Payment failed: {order['payment_error']}"))
+                return jsonify({
+                    "order": order,
+                    "error": "Order created but payment failed",
+                    "trace_id": trace_id
+                }), 500
+        except Exception as e:
+            logger.error(f"Failed to call payment service: {e}")
+            span.set_status(trace.Status(trace.StatusCode.ERROR, f"Payment service call failed: {str(e)}"))
+        
+        return jsonify({"order": order, "trace_id": trace_id}), 201
 
 # Add Prometheus metrics endpoint
 app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {

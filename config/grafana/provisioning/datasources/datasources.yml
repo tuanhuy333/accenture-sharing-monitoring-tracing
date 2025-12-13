@@ -28,11 +28,12 @@ datasources:
         datasourceUid: loki
         tags: ['job', 'instance', 'pod', 'namespace']
         mappedTags: [{ key: 'service.name', value: 'service' }]
-        mapTagNamesEnabled: false
-        spanStartTimeShift: '1h'
-        spanEndTimeShift: '1h'
-        filterByTraceID: false
+        mapTagNamesEnabled: true
+        spanStartTimeShift: '5m'
+        spanEndTimeShift: '5m'
+        filterByTraceID: true
         filterBySpanID: false
+        query: '{service="${__tags.service.name}"} |= "${__trace.traceId}"'
       tracesToMetrics:
         datasourceUid: prometheus
         tags: [{ key: 'service.name', value: 'service' }, { key: 'job' }]

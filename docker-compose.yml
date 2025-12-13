@@ -103,7 +103,7 @@ services:
   user-service:
     build:
       context: .
-      dockerfile: Dockerfile.user-service
+      dockerfile: docker/Dockerfile.user-service
     container_name: user-service
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
@@ -129,7 +129,7 @@ services:
   order-service:
     build:
       context: .
-      dockerfile: Dockerfile.order-service
+      dockerfile: docker/Dockerfile.order-service
     container_name: order-service
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
@@ -156,7 +156,7 @@ services:
   payment-service:
     build:
       context: .
-      dockerfile: Dockerfile.payment-service
+      dockerfile: docker/Dockerfile.payment-service
     container_name: payment-service
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
@@ -180,7 +180,7 @@ services:
   inventory-service:
     build:
       context: .
-      dockerfile: Dockerfile.inventory-service
+      dockerfile: docker/Dockerfile.inventory-service
     container_name: inventory-service
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
@@ -206,7 +206,7 @@ services:
   shipping-service:
     build:
       context: .
-      dockerfile: Dockerfile.shipping-service
+      dockerfile: docker/Dockerfile.shipping-service
     container_name: shipping-service
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
@@ -232,7 +232,7 @@ services:
   notification-service:
     build:
       context: .
-      dockerfile: Dockerfile.notification-service
+      dockerfile: docker/Dockerfile.notification-service
     container_name: notification-service
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
@@ -256,7 +256,7 @@ services:
   review-service:
     build:
       context: .
-      dockerfile: Dockerfile.review-service
+      dockerfile: docker/Dockerfile.review-service
     container_name: review-service
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
@@ -282,7 +282,7 @@ services:
   auth-service:
     build:
       context: .
-      dockerfile: Dockerfile.auth-service
+      dockerfile: docker/Dockerfile.auth-service
     container_name: auth-service
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
