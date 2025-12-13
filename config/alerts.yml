@@ -1,94 +1,209 @@
 groups:
   - name: demo_alerts
-    interval: 30s
+    interval: 10s
     rules:
+      # ========== Service Availability Alerts ==========
+      - alert: UserServiceDown
+        expr: up{job="user-service"} == 0
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "User Service is down"
+          description: "User service is not responding for more than 10 seconds"
+
+      - alert: OrderServiceDown
+        expr: up{job="order-service"} == 0
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Order Service is down"
+          description: "Order service is not responding for more than 10 seconds"
+
+      - alert: PaymentServiceDown
+        expr: up{job="payment-service"} == 0
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Payment Service is down"
+          description: "Payment service is not responding for more than 10 seconds"
+
+      - alert: InventoryServiceDown
+        expr: up{job="inventory-service"} == 0
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Inventory Service is down"
+          description: "Inventory service is not responding for more than 10 seconds"
+
+      - alert: ShippingServiceDown
+        expr: up{job="shipping-service"} == 0
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Shipping Service is down"
+          description: "Shipping service is not responding for more than 10 seconds"
+
+      - alert: NotificationServiceDown
+        expr: up{job="notification-service"} == 0
+        for: 10s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Notification Service is down"
+          description: "Notification service is not responding for more than 10 seconds"
+
+      - alert: ReviewServiceDown
+        expr: up{job="review-service"} == 0
+        for: 10s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Review Service is down"
+          description: "Review service is not responding for more than 10 seconds"
+
+      - alert: AuthServiceDown
+        expr: up{job="auth-service"} == 0
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Auth Service is down"
+          description: "Auth service is not responding for more than 10 seconds"
+
+      # ========== Error Rate Alerts ==========
       - alert: HighErrorRate
-        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
-        for: 2m
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) by (service) > 0.1
+        for: 10s
         labels:
           severity: critical
         annotations:
           summary: "High error rate detected in {{ $labels.service }}"
           description: "Error rate is {{ $value }} errors per second for service {{ $labels.service }}"
 
+      - alert: High4xxErrorRate
+        expr: sum(rate(http_requests_total{status=~"4.."}[5m])) by (service) > 0.5
+        for: 10s
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 4xx error rate in {{ $labels.service }}"
+          description: "4xx error rate is {{ $value }} errors per second for service {{ $labels.service }}"
+
+      - alert: ErrorRateSpike
+        expr: sum(rate(http_requests_total{status=~"5.."}[1m])) by (service) > sum(rate(http_requests_total{status=~"5.."}[5m])) by (service) * 3
+        for: 10s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error rate spike detected in {{ $labels.service }}"
+          description: "Error rate increased significantly in {{ $labels.service }}"
+
+      # ========== Latency Alerts ==========
       - alert: HighRequestLatency
-        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
-        for: 5m
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)) > 1
+        for: 10s
         labels:
           severity: warning
         annotations:
           summary: "High request latency in {{ $labels.service }}"
           description: "95th percentile latency is {{ $value }} seconds for service {{ $labels.service }}"
 
-      - alert: UserServiceDown
-        expr: up{job="user-service"} == 0
-        for: 1m
+      - alert: VeryHighRequestLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)) > 2
+        for: 10s
         labels:
           severity: critical
         annotations:
-          summary: "User Service is down"
-          description: "User service is not responding"
+          summary: "Very high request latency in {{ $labels.service }}"
+          description: "95th percentile latency is {{ $value }} seconds for service {{ $labels.service }}"
 
-      - alert: OrderServiceDown
-        expr: up{job="order-service"} == 0
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Order Service is down"
-          description: "Order service is not responding"
-
-      - alert: PaymentServiceDown
-        expr: up{job="payment-service"} == 0
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Payment Service is down"
-          description: "Payment service is not responding"
-
-      - alert: InventoryServiceDown
-        expr: up{job="inventory-service"} == 0
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Inventory Service is down"
-          description: "Inventory service is not responding"
-
-      - alert: ShippingServiceDown
-        expr: up{job="shipping-service"} == 0
-        for: 1m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Shipping Service is down"
-          description: "Shipping service is not responding"
-
-      - alert: NotificationServiceDown
-        expr: up{job="notification-service"} == 0
-        for: 1m
+      - alert: SlowResponseTime
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service)) > 3
+        for: 10s
         labels:
           severity: warning
         annotations:
-          summary: "Notification Service is down"
-          description: "Notification service is not responding"
+          summary: "Slow response time in {{ $labels.service }}"
+          description: "99th percentile latency is {{ $value }} seconds for service {{ $labels.service }}"
 
-      - alert: ReviewServiceDown
-        expr: up{job="review-service"} == 0
-        for: 1m
+      # ========== Request Rate Alerts ==========
+      - alert: HighRequestRate
+        expr: sum(rate(http_requests_total[5m])) by (service) > 10
+        for: 10s
         labels:
           severity: warning
         annotations:
-          summary: "Review Service is down"
-          description: "Review service is not responding"
+          summary: "High request rate in {{ $labels.service }}"
+          description: "Request rate is {{ $value }} requests per second for service {{ $labels.service }}"
 
-      - alert: AuthServiceDown
-        expr: up{job="auth-service"} == 0
-        for: 1m
+      - alert: LowRequestRate
+        expr: sum(rate(http_requests_total[5m])) by (service) < 0.01 and sum(rate(http_requests_total[15m])) by (service) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low request rate in {{ $labels.service }}"
+          description: "Request rate is very low ({{ $value }} req/s) for service {{ $labels.service }}"
+
+      - alert: RequestRateSpike
+        expr: sum(rate(http_requests_total[1m])) by (service) > sum(rate(http_requests_total[5m])) by (service) * 3 and sum(rate(http_requests_total[5m])) by (service) > 1
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Request rate spike in {{ $labels.service }}"
+          description: "Request rate increased significantly in {{ $labels.service }}"
+
+      # ========== Active Requests Alerts ==========
+      - alert: HighActiveRequests
+        expr: sum(active_requests) by (service) > 50
+        for: 10s
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of active requests in {{ $labels.service }}"
+          description: "There are {{ $value }} active requests in service {{ $labels.service }}"
+
+      # ========== Service Health Alerts ==========
+      - alert: ServiceUnavailable
+        expr: (sum(rate(http_requests_total{status=~"5.."}[5m])) by (service) / sum(rate(http_requests_total[5m])) by (service)) > 0.1
+        for: 10s
         labels:
           severity: critical
         annotations:
-          summary: "Auth Service is down"
-          description: "Auth service is not responding"
+          summary: "Service {{ $labels.service }} has high error rate"
+          description: "Error rate is {{ $value | humanizePercentage }}% for service {{ $labels.service }}"
+
+      - alert: ServiceDegraded
+        expr: (sum(rate(http_requests_total{status=~"5.."}[5m])) by (service) / sum(rate(http_requests_total[5m])) by (service)) > 0.05
+        for: 10s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Service {{ $labels.service }} is degraded"
+          description: "Error rate is {{ $value | humanizePercentage }}% for service {{ $labels.service }}"
+
+      # ========== Prometheus Monitoring Alerts ==========
+      - alert: PrometheusTargetDown
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus target {{ $labels.job }} is down"
+          description: "Target {{ $labels.job }} ({{ $labels.instance }}) is down"
+
+      - alert: PrometheusScrapeFailure
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus scrape failure for {{ $labels.job }}"
+          description: "Failed to scrape metrics from {{ $labels.job }} ({{ $labels.instance }})"
 

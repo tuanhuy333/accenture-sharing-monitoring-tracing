@@ -6,9 +6,9 @@
 global:
   resolve_timeout: 5m
   smtp_smarthost: 'smtp.gmail.com:587'
-  smtp_from: 'your-email@gmail.com'  # Thay bằng email của bạn
-  smtp_auth_username: 'your-email@gmail.com'  # Thay bằng email của bạn
-  smtp_auth_password: 'your-app-password'  # Thay bằng App Password từ Gmail
+  smtp_from: 'xpad0307@gmail.com'  # Thay bằng email của bạn
+  smtp_auth_username: 'xpad0307@gmail.com'  # Thay bằng email của bạn
+  smtp_auth_password: 'tahb vewk mmwp hryy'  # Thay bằng App Password từ Gmail
   smtp_require_tls: true
 
 route:
@@ -29,7 +29,7 @@ route:
 receivers:
   - name: 'email-notifications'
     email_configs:
-      - to: 'recipient@example.com'  # Thay bằng email nhận thông báo
+      - to: 'tuanhuy030799@gmail.com'  # Thay bằng email nhận thông báo
         headers:
           Subject: 'Alert: {{ .GroupLabels.alertname }}'
         html: |
@@ -49,7 +49,7 @@ receivers:
 
   - name: 'email-critical'
     email_configs:
-      - to: 'recipient@example.com'  # Thay bằng email nhận thông báo
+      - to: 'tuanhuy030799@gmail.com'  # Thay bằng email nhận thông báo
         headers:
           Subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
         html: |
@@ -66,7 +66,7 @@ receivers:
 
   - name: 'email-warning'
     email_configs:
-      - to: 'recipient@example.com'  # Thay bằng email nhận thông báo
+      - to: 'tuanhuy030799@gmail.com'  # Thay bằng email nhận thông báo
         headers:
           Subject: '⚠️ WARNING: {{ .GroupLabels.alertname }}'
         html: |
