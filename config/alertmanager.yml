@@ -52,7 +52,7 @@ receivers:
       - to: 'tuanhuy030799@gmail.com'  # Thay bằng email nhận thông báo
         headers:
           Subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
-        html: |g
+        html: |
           <h2 style="color: red;">CRITICAL ALERT</h2>
           <p><strong>Alert:</strong> {{ .GroupLabels.alertname }}</p>
           <p><strong>Service:</strong> {{ .CommonLabels.job }}</p>
