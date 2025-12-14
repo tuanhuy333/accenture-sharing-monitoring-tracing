@@ -8,15 +8,23 @@ global:
   smtp_smarthost: 'smtp.gmail.com:587'
   smtp_from: 'xpad0307@gmail.com'  # Thay bằng email của bạn
   smtp_auth_username: 'xpad0307@gmail.com'  # Thay bằng email của bạn
-  smtp_auth_password: 'tahb vewk mmwp hryy'  # Thay bằng App Password từ Gmail
+  smtp_auth_password: 'Onlypass@1234'  # Thay bằng App Password từ Gmail
   smtp_require_tls: true
 
 route:
   group_by: ['alertname', 'cluster', 'service']
-  group_wait: 3s
-  group_interval: 3s
+  group_wait: 10s
+  group_interval: 10s
   repeat_interval: 12h
-  receiver: 'email-critical'
+  receiver: 'email-notifications'
+  routes:
+    - match:
+        severity: critical
+      receiver: 'email-critical'
+      continue: true
+    - match:
+        severity: warning
+      receiver: 'email-warning'
 
 receivers:
   - name: 'email-notifications'
@@ -28,7 +36,7 @@ receivers:
           <h2>Alert Details</h2>
           <p><strong>Alert:</strong> {{ .GroupLabels.alertname }}</p>
           <p><strong>Severity:</strong> {{ .CommonLabels.severity }}</p>
-          <p><strong>Service:</strong> {{ .CommonLabels.service }}{{ if not .CommonLabels.service }}{{ .CommonLabels.job }}{{ end }}</p>
+          <p><strong>Service:</strong> {{ .CommonLabels.job }}</p>
           <hr>
           <h3>Alerts:</h3>
           {{ range .Alerts }}
@@ -36,14 +44,6 @@ receivers:
           <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
           <p><strong>Description:</strong> {{ .Annotations.description }}</p>
           <p><strong>Started:</strong> {{ .StartsAt }}</p>
-          <p><strong>Service:</strong> {{ .Labels.service }}{{ if not .Labels.service }}{{ .Labels.job }}{{ end }}</p>
-          {{ $traceId := .Annotations.trace_id }}
-          {{ if not $traceId }}{{ $traceId = .Labels.trace_id }}{{ end }}
-          {{ if $traceId }}<p><strong>Trace ID:</strong> {{ $traceId }}</p>{{ end }}
-          {{ $panesJson := printf "{\"9nf\":{\"datasource\":\"tempo\",\"queries\":[{\"query\":\"%s\",\"queryType\":\"serviceMap\",\"refId\":\"A\",\"limit\":20,\"tableType\":\"traces\"}],\"range\":{\"from\":\"now-1h\",\"to\":\"now\"}}}" $traceId }}
-          {{ $panesEncoded := $panesJson | urlquery }}
-          {{ $url := printf "http://localhost:3000/explore?schemaVersion=1&panes=%s&orgId=1" $panesEncoded }}
-          <p><a href="{{ $url }}" style="background-color: #0066cc; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px;">🔍 View Service Map{{ if $traceId }} for Trace {{ $traceId }}{{ end }}</a></p>
           <hr>
           {{ end }}
 
@@ -52,23 +52,15 @@ receivers:
       - to: 'tuanhuy030799@gmail.com'  # Thay bằng email nhận thông báo
         headers:
           Subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
-        html: |
+        html: |g
           <h2 style="color: red;">CRITICAL ALERT</h2>
           <p><strong>Alert:</strong> {{ .GroupLabels.alertname }}</p>
-          <p><strong>Service:</strong> {{ .CommonLabels.service }}{{ if not .CommonLabels.service }}{{ .CommonLabels.job }}{{ end }}</p>
+          <p><strong>Service:</strong> {{ .CommonLabels.job }}</p>
           <hr>
           {{ range .Alerts }}
           <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
           <p><strong>Description:</strong> {{ .Annotations.description }}</p>
           <p><strong>Started:</strong> {{ .StartsAt }}</p>
-          <p><strong>Service:</strong> {{ .Labels.service }}{{ if not .Labels.service }}{{ .Labels.job }}{{ end }}</p>
-          {{ $traceId := .Annotations.trace_id }}
-          {{ if not $traceId }}{{ $traceId = .Labels.trace_id }}{{ end }}
-          {{ if $traceId }}<p><strong>Trace ID:</strong> {{ $traceId }}</p>{{ end }}
-          {{ $panesJson := printf "{\"9nf\":{\"datasource\":\"tempo\",\"queries\":[{\"query\":\"%s\",\"queryType\":\"serviceMap\",\"refId\":\"A\",\"limit\":20,\"tableType\":\"traces\"}],\"range\":{\"from\":\"now-1h\",\"to\":\"now\"}}}" $traceId }}
-          {{ $panesEncoded := $panesJson | urlquery }}
-          {{ $url := printf "http://localhost:3000/explore?schemaVersion=1&panes=%s&orgId=1" $panesEncoded }}
-          <p><a href="{{ $url }}" style="background-color: #0066cc; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px;">🔍 View Service Map{{ if $traceId }} for Trace {{ $traceId }}{{ end }}</a></p>
           <hr>
           {{ end }}
 
@@ -80,19 +72,12 @@ receivers:
         html: |
           <h2 style="color: orange;">WARNING ALERT</h2>
           <p><strong>Alert:</strong> {{ .GroupLabels.alertname }}</p>
-          <p><strong>Service:</strong> {{ .CommonLabels.service }}{{ if not .CommonLabels.service }}{{ .CommonLabels.job }}{{ end }}</p>
+          <p><strong>Service:</strong> {{ .CommonLabels.job }}</p>
           <hr>
           {{ range .Alerts }}
           <p><strong>Summary:</strong> {{ .Annotations.summary }}</p>
           <p><strong>Description:</strong> {{ .Annotations.description }}</p>
           <p><strong>Started:</strong> {{ .StartsAt }}</p>
-          {{ $traceId := .Annotations.trace_id }}
-          {{ if not $traceId }}{{ $traceId = .Labels.trace_id }}{{ end }}
-          {{ if $traceId }}<p><strong>Trace ID:</strong> {{ $traceId }}</p>{{ end }}
-          {{ $panesJson := printf "{\"9nf\":{\"datasource\":\"tempo\",\"queries\":[{\"query\":\"%s\",\"queryType\":\"serviceMap\",\"refId\":\"A\",\"limit\":20,\"tableType\":\"traces\"}],\"range\":{\"from\":\"now-1h\",\"to\":\"now\"}}}" $traceId }}
-          {{ $panesEncoded := $panesJson | urlquery }}
-          {{ $url := printf "http://localhost:3000/explore?schemaVersion=1&panes=%s&orgId=1" $panesEncoded }}
-          <p><a href="{{ $url }}" style="background-color: #ff9900; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px;">🔍 View Service Map{{ if $traceId }} for Trace {{ $traceId }}{{ end }}</a></p>
           <hr>
           {{ end }}
 
@@ -102,3 +87,4 @@ inhibit_rules:
     target_match:
       severity: 'warning'
     equal: ['alertname', 'cluster', 'service']
+
