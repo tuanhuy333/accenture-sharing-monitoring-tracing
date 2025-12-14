@@ -152,3 +152,4 @@ docker-compose restart promtail loki
 - Loki API: http://localhost:3100
 - Promtail logs: `docker logs promtail`
 - Log files: `.\logs\*.log`
+
