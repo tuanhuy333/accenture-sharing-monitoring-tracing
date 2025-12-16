@@ -1,11 +1,11 @@
 groups:
   - name: demo_alerts
-    interval: 10s
+    interval: 1s
     rules:
       # ========== Service Down Alert - Interrupt Request ==========
       - alert: PaymentServiceDown
         expr: up{job="payment-service"} == 0
-        for: 10s
+        for: 1s
         labels:
           severity: critical
         annotations:
@@ -19,7 +19,7 @@ groups:
       # ========== Error Rate Alert - Service Error ==========
       - alert: HighErrorRate
         expr: sum(rate(http_requests_total{status=~"5.."}[1m])) by (service) > 0.01
-        for: 10s
+        for: 1s
         labels:
           severity: critical
         annotations:
